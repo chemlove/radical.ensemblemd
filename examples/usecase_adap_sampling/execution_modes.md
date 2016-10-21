@@ -15,7 +15,7 @@ There are few general requirements in this setup:
 
 ## Local submission 
 
-![local_submission](./local_submission.pdf)
+![local_submission](./local_submission.png)
 
 In this mode, both the client and the agent run on the same machine. The machine could be a laptop, VM. There is an important distinction when the resource is a cluster/grid.
 
@@ -25,7 +25,7 @@ Note: In a cluster/grid, when the execution agent is also on the head/login node
 
 ## Remote submission
 
-![remote_submission](./remote_submission.pdf)
+![remote_submission](./remote_submission.png)
 
 Due to the above constraints on some of the clusters/grids, a remote submission mechanism could be very useful. In this mode, the client script sits on a persistent machine and the execution agent on the compute nodes of the cluster/grid. The head/login node is still used but primarily for logging in to the machine and submitting a resource reservation.
 
