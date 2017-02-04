@@ -1,31 +1,22 @@
 {
 	"local.localhost" : {
-            				"project"  : null,
-            				"queue"    : null,
-            				"schema"   : "local"
-        			},
+				"project"  : null,
+				"queue"    : null,
+				"schema"   : "local",
+				"cores": 2
+			},
 
-        	"epsrc.archer" : {
-            				"project"  : "y14-CECAM",
-            				"queue"    : "R3211460",	
-            				"schema"   : null
-        			},
+	"xsede.stampede" : {
+				"project"  : "TG-TRA100001S",
+				"queue"    : "development",
+				"schema"   : "gsissh",
+				"cores": 16
+			},
 
-        	"epsrc.archer_orte" : {
-            				"project"  : "y14-CECAM",
-            				"queue"    : "R3211460",
-            				"schema"   : null
-        			},
-
-        	"xsede.stampede" : {
-            				"project"  : "TG-MCB150124",
-            				"queue"    : "development",
-            				"schema"   : "gsissh"
-        			},
-
-        	"xsede.comet"  : {
-			            "project"  : "unc104",
-            				"queue"    : "",
-            				"schema"   : "gsissh"
-        			}
+	"xsede.comet"  : {
+				"project"  : "uic157",
+				"queue"    : "compute",
+				"schema"   : "gsissh",
+				"cores": 16
+			}
 }

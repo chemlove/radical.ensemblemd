@@ -15,7 +15,14 @@ from radical.ensemblemd import Kernel
 from radical.ensemblemd import SimulationAnalysisLoop
 from radical.ensemblemd import EnsemblemdError
 from radical.ensemblemd import SimulationAnalysisLoop
-from radical.ensemblemd import SingleClusterEnvironment
+from radical.ensemblemd import ResourceHandle
+
+# ------------------------------------------------------------------------------
+# Set default verbosity
+
+if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
+	os.environ['RADICAL_ENTK_VERBOSE'] = 'REPORT'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -30,24 +37,24 @@ class RandomSA(SimulationAnalysisLoop):
 	def pre_loop(self):
 		"""pre_loop is executed before the main simulation-analysis loop is
 		   started. In this example we create an initial 1 kB random ASCII file
-		   that we use as the reference for all analysis steps.
+		   that we use as the reference for all analysis stages.
 		"""
 		k = Kernel(name="misc.mkfile")
 		k.arguments = ["--size=1000", "--filename=reference.dat"]
 		k.upload_input_data = ['levenshtein.py']
 		return k
 
-	def simulation_step(self, iteration, instance):
-		"""The simulation step generates a 1 kB file containing random ASCII
+	def simulation_stage(self, iteration, instance):
+		"""The simulation stage generates a 1 kB file containing random ASCII
 		   characters that is compared against the 'reference' file in the
-		   subsequent analysis step.
+		   subsequent analysis stage.
 		"""
 		k = Kernel(name="misc.mkfile")
 		k.arguments = ["--size=1000", "--filename=simulation-{0}-{1}.dat".format(iteration, instance)]
 		return k
 
-	def analysis_step(self, iteration, instance):
-		"""In the analysis step, we take the previously generated simulation
+	def analysis_stage(self, iteration, instance):
+		"""In the analysis stage, we take the previously generated simulation
 		   output and perform a Levenshtein distance calculation between it
 		   and the 'reference' file.
 
@@ -55,10 +62,10 @@ class RandomSA(SimulationAnalysisLoop):
 					a reference to the working directory of pre_loop.
 					The placeholder ``$PREV_SIMULATION`` used in ``link_input_data``
 					is a reference to the working directory of the previous
-					simulation step.
+					simulation stage.
 
 					It is also possible to reference a specific
-					simulation step using ``$SIMULATION_N`` or all simulations
+					simulation stage using ``$SIMULATION_N`` or all simulations
 					via ``$SIMULATIONS``. Analogous placeholders exist for
 					``ANALYSIS``.
 		"""
@@ -91,50 +98,53 @@ if __name__ == "__main__":
 		resource = sys.argv[1]
 	else: 
 		resource = 'local.localhost'
-	
+
 	try:
 
-		# Create a new static execution context with one resource and a fixed
+		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
+			config = json.load(data_file)
+
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
-		cluster = SingleClusterEnvironment(
+		cluster = ResourceHandle(
 				resource=resource,
-				cores=1,
+				cores=config[resource]["cores"],
 				walltime=15,
 				#username=None,
 
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
-				database_url='mongodb://extasy:extasyproject@extasy-db.epcc.ed.ac.uk/radicalpilot',
-				#database_name='myexps',
-				)
+				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
+			)
 
 		# Allocate the resources. 
 		cluster.allocate()
 
-		# We set both the the simulation and the analysis step 'instances' to 16.
-		# This means that 16 instances of the simulation step and 16 instances of
-		# the analysis step are executed every iteration.
+		# We set both the the simulation and the analysis stage 'instances' to 16.
+		# This means that 16 instances of the simulation stage and 16 instances of
+		# the analysis stage are executed every iteration.
 		randomsa = RandomSA(maxiterations=1, simulation_instances=16, analysis_instances=16)
 
 		cluster.run(randomsa)
-		
-
-		cluster.deallocate()
-
-
-		# After execution has finished, we print some statistical information
-		# extracted from the analysis results that were transferred back.
-		for it in range(1, randomsa.iterations+1):
-			print "\nIteration {0}".format(it)
-			ldists = []
-			for an in range(1, randomsa.analysis_instances+1):
-				ldists.append(int(open("analysis-{0}-{1}.dat".format(it, an), "r").readline()))
-			print "   * Levenshtein Distances: {0}".format(ldists)
-			print "   * Mean Levenshtein Distance: {0}".format(sum(ldists) / len(ldists))
-
+	
 	except EnsemblemdError, er:
 
 		print "Ensemble MD Toolkit Error: {0}".format(str(er))
 		raise # Just raise the execption again to get the backtrace
+
+	try:
+		cluster.deallocate()
+	except:
+		pass
+
+
+	# After execution has finished, we print some statistical information
+	# extracted from the analysis results that were transferred back.
+	for it in range(1, randomsa.iterations+1):
+		print "\nIteration {0}".format(it)
+		ldists = []
+		for an in range(1, randomsa.analysis_instances+1):
+			ldists.append(int(open("analysis-{0}-{1}.dat".format(it, an), "r").readline()))
+		print "   * Levenshtein Distances: {0}".format(ldists)
+		print "   * Mean Levenshtein Distance: {0}".format(sum(ldists) / len(ldists))

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+
 __author__       = "Antons Treikalis <antons.treikalis@rutgers.edu>"
 __copyright__    = "Copyright 2014, http://radical.rutgers.edu"
 __license__      = "MIT"
-__example_name__ = "Synchronous Replica Exchange Example with 'remote' \	exchange (generic)."
+__example_name__ = "Synchronous Replica Exchange Example with 'local' exchange (generic)."
 
 
 import os
@@ -12,12 +13,12 @@ import json
 import math
 import time
 import random
-import string
 import pprint
 import optparse
 import datetime
 from os import path
 import radical.pilot
+
 from radical.ensemblemd import Kernel
 from radical.ensemblemd import EnsemblemdError
 from radical.ensemblemd import ResourceHandle
@@ -37,8 +38,8 @@ if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
 class ReplicaP(Replica):
 	"""Class representing replica and it's associated data.
 
-	This will have to be extended by users implementing RE pattern for
-	a particular kernel and scheme
+	This class must be extended by users implementing RE pattern for
+	specific MD kernel
 	"""
 	def __init__(self, my_id, cores=1):
 		"""Constructor
@@ -72,28 +73,8 @@ class RePattern(EnsembleExchange):
 		self.nr_cycles = None
 
 		self.workdir_local = workdir_local
-		self.sh_file = 'shared_md_input.dat'
-		self.shared_urls = []
-		self.shared_files = []
 
 		super(RePattern, self).__init__()
-
-	# --------------------------------------------------------------------------
-	#
-	def prepare_shared_data(self):
-
-		fo = open(self.sh_file, "wb")
-		for i in range(1,250):
-			fo.write(str(random.randint(i, 500) + i*2.5) + " ");
-			fo.write(str(random.choice(string.letters)) + " ");
-			if i % 10 == 0:
-				fo.write(str("\n"));
-		fo.close()
-
-		self.shared_files.append(self.sh_file)
-
-		url = 'file://%s/%s' % (self.workdir_local, self.sh_file)
-		self.shared_urls.append(url)
 
 	# --------------------------------------------------------------------------
 	#
@@ -103,8 +84,9 @@ class RePattern(EnsembleExchange):
 		try:
 			self.replicas+1
 		except:
-			print "Ensemble MD Toolkit Error:  Number of replicas must be defined for pattern ReplicaExchange!"
-			raise      
+			print "Ensemble MD Toolkit Error: Number of replicas must be defined for pattern ReplicaExchange!"
+			raise
+
 
 		replicas = []
 		N = self.replicas
@@ -120,13 +102,14 @@ class RePattern(EnsembleExchange):
 		"""Generates dummy input file
 
 		Arguments:
-		replica - object representing a given replica and it's associated
+		replica - object representing a given replica and it's associated \
 		parameters
 		"""
 
 		file_name = self.inp_basename + "_" + \
 					str(replica.id) + "_" + \
 					str(replica.cycle) + ".md"
+
 		fo = open(file_name, "wb")
 		for i in range(1,500):
 			fo.write(str(random.randint(i, 500) + i*2.5) + " ");
@@ -140,7 +123,7 @@ class RePattern(EnsembleExchange):
 		"""Specifies input and output files and passes them to kernel
 
 		Arguments:
-		replica - object representing a given replica and it's associated
+		replica - object representing a given replica and it's associated \
 		parameters
 		"""
 		input_name = self.inp_basename + "_" + \
@@ -151,14 +134,11 @@ class RePattern(EnsembleExchange):
 					  str(replica.cycle) + ".out"
 
 		k = Kernel(name="misc.ccount")
-		k.arguments = ["--inputfile=" + \
-					   input_name + " " + \
-					   self.sh_file, "--outputfile=" + \
-					   output_name]
-		# no need to specify shared data here
-		# everything in shared_files list will be staged in
-		k.upload_input_data    = [input_name]
+		k.arguments            = ["--inputfile=" + input_name, 
+								  "--outputfile=" + output_name]
+		k.upload_input_data      = input_name
 		k.download_output_data = output_name
+		k.cores = 1
 
 		replica.cycle = replica.cycle + 1
 		return k
@@ -166,81 +146,40 @@ class RePattern(EnsembleExchange):
 	# --------------------------------------------------------------------------
 	#
 	def prepare_replica_for_exchange(self, replica):
-		"""Launches matrix_calculator.py script on target resource in order to
-		populate columns of swap matrix
+		"""This is not used in this example, but implementation is still \
+		required
 
 		Arguments:
-		replica - object representing a given replica and it's associated
+		replica - object representing a given replica and it's associated \
 		parameters
 		"""
-
-		matrix_col = "matrix_column_{cycle}_{replica}.dat"\
-					 .format(cycle=replica.cycle-1, replica=replica.id )
-
-		k = Kernel(name="md.re_exchange")
-		k.arguments = ["--calculator=matrix_calculator.py",
-					   "--replica_id=" + str(replica.id),
-					   "--replica_cycle=" + str(replica.cycle-1),
-					   "--replicas=" + str(self.replicas),
-					   "--replica_basename=" + self.inp_basename]
-		k.upload_input_data      = "matrix_calculator.py"
-		k.download_output_data = matrix_col
-
-		return k
+		pass
 
 	#---------------------------------------------------------------------------
 	#
 	def exchange(self, r_i, replicas, swap_matrix):
-		"""Given replica r_i returns replica r_i needs to perform an exchange
-		with
+		"""Given replica r_i returns replica r_j for r_i to perform an \
+		exchange with
 
 		Arguments:
 		replicas - a list of replica objects
-		swap_matrix - matrix of dimension-less energies, where each column is
+		swap_matrix - matrix of dimension-less energies, where each column is \
 		a replica and each row is a state
 		"""
 		return random.choice(replicas)
 
 	#---------------------------------------------------------------------------
 	#
-	def get_swap_matrix(self, replicas, matrix_columns):
-		"""Creates and populates swap matrix which is used to determine
-		exchange probabilities
+	def get_swap_matrix(self, replicas):
+		"""Creates and populates swap matrix used to determine exchange \
+		probabilities
 
 		Arguments:
 		replicas - a list of replica objects
-		matrix_columns - matrix of energy parameters obtained during the
-		exchange step
 		"""
-		dim = len(replicas)
-
 		# init matrix
-		swap_matrix = [[ 0. for j in range(dim)] for i in range(dim)]
-
-		matrix_columns = sorted(matrix_columns)
-
-		# checking if matrix columns has enough rows
-		if (len(matrix_columns) < dim):
-			print "Ensemble MD Toolkit Error: matrix_columns does not have enough rows."
-			sys.exit()
-
-		# checking if matrix columns rows have enough elements
-		index = 0
-		for row in matrix_columns:
-			if (len(row) < dim):
-				print "Ensemble MD Toolkit Error: matrix_columns row {0} does not have enough elements.".format(index)
-				sys.exit()
-			index += 1
-
-		for r in replicas:
-			# populating one column at a time
-			for i in range(len(replicas)):    
-				pos = len(matrix_columns[r.id][i]) - 1
-				if (matrix_columns[r.id][i][pos].isdigit()):
-					swap_matrix[i][r.id] = float(matrix_columns[r.id][i])
-				else:
-					print "Ensemble MD Toolkit Error: matrix_columns element ({0},{1}) is not a number.".format(r.id, i)
-					sys.exit()
+		swap_matrix = [[ 0. for j in range(len(replicas))]
+			for i in range(len(replicas))]
 
 		return swap_matrix
 
@@ -257,48 +196,6 @@ class RePattern(EnsembleExchange):
 		replica_i.parameter = replica_j.parameter
 		replica_j.parameter = param_i
 
-	#---------------------------------------------------------------------------
-	#
-	def build_swap_matrix(self, replicas):
-		"""Creates a swap matrix from matrix_column_x.dat files. 
-		matrix_column_x.dat - is populated on targer resource and then 
-		transferred back. This file is created for each replica and has data 
-		for one column of swap matrix. In addition to that, this file holds 
-		path to pilot compute unit of the previous run, where reside NAMD output
-		files for a given replica. 
-
-		Arguments:
-		replicas - list of Replica objects
-
-		Returns:
-		swap_matrix - 2D list of lists of dimension-less energies, where each 
-		column is a replica and each row is a state
-		"""
-
-		base_name = "matrix_column"
-		size = len(replicas)
-
-		# init matrix
-		swap_matrix = [[ 0. for j in range(size)]
-			 for i in range(size)]
-
-		for r in replicas:
-			column_file = base_name + "_" + \
-						  str(r.cycle-1) + "_" + \
-						  str(r.id) +  ".dat"       
-			try:
-				f = open(column_file)
-				lines = f.readlines()
-				f.close()
-				data = lines[0].split()
-				# populating one column at a time
-				for i in range(size):
-					swap_matrix[i][r.id] = float(data[i])
-			except:
-				raise
-
-		return swap_matrix
-
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
@@ -313,13 +210,12 @@ if __name__ == "__main__":
 		resource = 'local.localhost'
 
 	try:
-
-		workdir_local = os.getcwd()
-
 		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
 			config = json.load(data_file)
 
-		# Create a new static execution context with one resource and a fixed
+		workdir_local = os.getcwd()
+
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
 		cluster = ResourceHandle(
 				resource=resource,
@@ -330,18 +226,15 @@ if __name__ == "__main__":
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
 				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
-				#database_name='myexps',
 			)
 		
-
 		# Allocate the resources.
 		cluster.allocate()
 
 		# creating RE pattern object
 		re_pattern = RePattern(workdir_local)
-		
+
 		# set number of replicas
 		re_pattern.replicas = 8
  
@@ -353,9 +246,8 @@ if __name__ == "__main__":
 
 		re_pattern.add_replicas( replicas )
 
-
 		# run RE simulation
-		cluster.run(re_pattern, force_plugin="replica_exchange.static_pattern_2")
+		cluster.run(re_pattern, force_plugin="replica_exchange.static_pattern_1")
 
 	except EnsemblemdError, er:
 

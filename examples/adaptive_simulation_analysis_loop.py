@@ -7,7 +7,7 @@ the number of simulations is the same as that set while pattern creation ('simul
 NOTE: There is an extra parameter during pattern creation, "adaptive_simulation=True". If this is
 not set, every iteration will have the same number of simulations.
 
-The analysis step (or the last kernel of the analysis step, if there are multiple kernels) is expected
+The analysis stage (or the last kernel of the analysis stage, if there are multiple kernels) is expected
 to produce the number of simulations for the next iteration. There are two methods of extracting this 
 value:
 
@@ -35,7 +35,13 @@ import json
 from radical.ensemblemd import Kernel
 from radical.ensemblemd import SimulationAnalysisLoop
 from radical.ensemblemd import EnsemblemdError
-from radical.ensemblemd import SingleClusterEnvironment
+from radical.ensemblemd import ResourceHandle
+
+# ------------------------------------------------------------------------------
+# Set default verbosity
+
+if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
+	os.environ['RADICAL_ENTK_VERBOSE'] = 'REPORT'
 
 # ------------------------------------------------------------------------------
 #
@@ -47,16 +53,16 @@ class MSSA(SimulationAnalysisLoop):
 		SimulationAnalysisLoop.__init__(self, iterations, simulation_instances, analysis_instances, adaptive_simulation)
 
 
-	def simulation_step(self, iteration, instance):
-		"""In the simulation step we simply create files with 1000 characters.
+	def simulation_stage(self, iteration, instance):
+		"""In the simulation stage we simply create files with 1000 characters.
 		"""
 		k = Kernel(name="misc.mkfile")
 		k.arguments = ["--size=1000", "--filename=asciifile-{0}.dat".format(instance)]
 		k.download_output_data = ['asciifile-{0}.dat > iter{1}/asciifile-{0}.dat'.format(instance,iteration)]
 		return [k]
 
-	def analysis_step(self, iteration, instance):
-		""" In the analysis step, we use the 'randval' kernel to output a random number within 
+	def analysis_stage(self, iteration, instance):
+		""" In the analysis stage, we use the 'randval' kernel to output a random number within 
 		the upperlimit. The output is simply a number (and no other messages). Hence, we do not mention
 		and extraction scripts. The pattern automatically picks up the number.
 		"""
@@ -77,24 +83,25 @@ if __name__ == "__main__":
 		resource = sys.argv[1]
 	else: 
 		resource = 'local.localhost'
-	
+
 	try:
 
-		# Create a new static execution context with one resource and a fixed
+		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
+			config = json.load(data_file)
+
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
-		cluster = SingleClusterEnvironment(
+		cluster = ResourceHandle(
 				resource=resource,
-				cores=1,
+				cores=config[resource]["cores"],
 				walltime=15,
 				#username=None,
 
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
-				database_url='mongodb://extasy:extasyproject@extasy-db.epcc.ed.ac.uk/radicalpilot',
-				#database_name='myexps',
-				)
+				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
+			)
 
 		# Allocate the resources. 
 		cluster.allocate()
@@ -105,9 +112,12 @@ if __name__ == "__main__":
 
 		cluster.run(mssa)
 
-		cluster.deallocate()
-
 	except EnsemblemdError, er:
 
 		print "Ensemble MD Toolkit Error: {0}".format(str(er))
 		raise # Just raise the execption again to get the backtrace
+
+	try:
+		cluster.deallocate()
+	except:
+		pass

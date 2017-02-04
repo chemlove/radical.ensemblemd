@@ -3,20 +3,24 @@ import os
 import json
 
 from radical.ensemblemd import Kernel
-from radical.ensemblemd import Pipeline
+from radical.ensemblemd import PoE
 from radical.ensemblemd import EnsemblemdError
-from radical.ensemblemd import SingleClusterEnvironment
-
+from radical.ensemblemd import ResourceHandle
 
 # ------------------------------------------------------------------------------
-#
-class CharCount(BagofTasks):
+# Set default verbosity
+
+if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
+	os.environ['RADICAL_ENTK_VERBOSE'] = 'REPORT'
+	
+
+class CharCount(PoE):
 	"""The CharCount class implements a three-stage BagofTasks. It inherits from
 		radical.ensemblemd.BagofTasks, the abstract base class for all BagofTaskss.
 	"""
 
 	def __init__(self, stages, instances):
-		BagofTasks.__init__(self, stages, instances)
+		PoE.__init__(self, stages, instances)
 
 	def stage_1(self, instance):
 		"""The first stage of the BagofTasks creates a 1 MB ASCI file.
@@ -50,9 +54,8 @@ class CharCount(BagofTasks):
 #
 if __name__ == "__main__":
 
-
 	# use the resource specified as argument, fall back to localhost
-	if  len(sys.argv)  > 2: 
+	if   len(sys.argv)  > 2: 
 		print 'Usage:\t%s [resource]\n\n' % sys.argv[0]
 		sys.exit(1)
 	elif len(sys.argv) == 2: 
@@ -65,20 +68,19 @@ if __name__ == "__main__":
 		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
 			config = json.load(data_file)
 
-		# Create a new static execution context with one resource and a fixed
+		
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
-		cluster = SingleClusterEnvironment(
+		cluster = ResourceHandle(
 				resource=resource,
-				cores=1,
+				cores=config[resource]["cores"],
 				walltime=15,
 				#username=None,
 
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
-				database_url='mongodb://extasy:extasyproject@extasy-db.epcc.ed.ac.uk/radicalpilot',
-				#database_name='myexps',
+				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
 			)
 
 		# Allocate the resources. 
@@ -94,17 +96,21 @@ if __name__ == "__main__":
 
 		cluster.run(ccount)
 
-
-		# Deallocate the resources. 
-		cluster.deallocate()
-
-		# Print the checksums
-		print "\nResulting checksums:"
-		import glob
-		for result in glob.glob("cfreqs-*.sha1"):
-			print "  * {0}".format(open(result, "r").readline().strip())
-
 	except EnsemblemdError, er:
 
 		print "Ensemble MD Toolkit Error: {0}".format(str(er))
 		raise # Just raise the execption again to get the backtrace
+
+	try:
+
+		# Deallocate the resources. 
+		cluster.deallocate()
+
+	except:
+		pass
+
+	# Print the checksums
+	print "\nResulting checksums:"
+	import glob
+	for result in glob.glob("cfreqs-*.sha1"):
+		print "  * {0}".format(open(result, "r").readline().strip())

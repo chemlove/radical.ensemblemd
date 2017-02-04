@@ -10,20 +10,26 @@ import os
 import json
 
 from radical.ensemblemd import Kernel
-from radical.ensemblemd import Pipeline
+from radical.ensemblemd import EoP
 from radical.ensemblemd import EnsemblemdError
-from radical.ensemblemd import SingleClusterEnvironment
+from radical.ensemblemd import ResourceHandle
+
+# ------------------------------------------------------------------------------
+# Set default verbosity
+
+if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
+	os.environ['RADICAL_ENTK_VERBOSE'] = 'REPORT'
 
 
 # ------------------------------------------------------------------------------
 #
-class CharCount(Pipeline):
+class CharCount(EoP):
 	"""The CharCount class implements a three-stage pipeline. It inherits from
 		radical.ensemblemd.Pipeline, the abstract base class for all pipelines.
 	"""
 
 	def __init__(self, stages,instances):
-		Pipeline.__init__(self, stages,instances)
+		EoP.__init__(self, stages,instances)
 
 	def stage_1(self, instance):
 		"""The first stage of the pipeline creates a 1 MB ASCI file.
@@ -70,24 +76,25 @@ if __name__ == "__main__":
 		resource = sys.argv[1]
 	else: 
 		resource = 'local.localhost'
-	
+
 	try:
 
-		# Create a new static execution context with one resource and a fixed
+		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
+			config = json.load(data_file)
+
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
-		cluster = SingleClusterEnvironment(
+		cluster = ResourceHandle(
 				resource=resource,
-				cores=1,
+				cores=config[resource]["cores"],
 				walltime=15,
 				#username=None,
 
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
-				database_url='mongodb://extasy:extasyproject@extasy-db.epcc.ed.ac.uk/radicalpilot',
-				#database_name='myexps',
-				)
+				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
+			)
 
 		# Allocate the resources. 
 		cluster.allocate()
@@ -106,11 +113,14 @@ if __name__ == "__main__":
 		print "\nResulting checksums:"
 		import glob
 		for result in glob.glob("cfreqs-*.sha1"):
-		print "  * {0}".format(open(result, "r").readline().strip())
-
-		cluster.deallocate()
+			print "  * {0}".format(open(result, "r").readline().strip())
 
 	except EnsemblemdError, er:
 
 		print "Ensemble MD Toolkit Error: {0}".format(str(er))
 		raise # Just raise the execption again to get the backtrace
+
+	try:
+		cluster.deallocate()
+	except:
+		pass

@@ -1,32 +1,36 @@
 #!/usr/bin/env python
 
-
-
-__author__       = "Ole Weider <ole.weidner@rutgers.edu>"
-__copyright__    = "Copyright 2014, http://radical.rutgers.edu"
+__author__       = "Vivek Balasubramanian <vivek.balasubramanian@rutgers.edu>"
+__copyright__    = "Copyright 2016, http://radical.rutgers.edu"
 __license__      = "MIT"
-__example_name__ = "Bag of Tasks Example (generic)"
+__example_name__ = "Pipeline of Ensembles Example (generic)"
 
 import sys
 import os
 import json
 
 from radical.ensemblemd import Kernel
-from radical.ensemblemd import BagofTasks
+from radical.ensemblemd import PoE
 from radical.ensemblemd import EnsemblemdError
-from radical.ensemblemd import SingleClusterEnvironment
+from radical.ensemblemd import ResourceHandle
+
+# ------------------------------------------------------------------------------
+# Set default verbosity
+
+if os.environ.get('RADICAL_ENTK_VERBOSE') == None:
+	os.environ['RADICAL_ENTK_VERBOSE'] = 'REPORT'
 
 
 # ------------------------------------------------------------------------------
 #
-class CalculateChecksums(BagofTasks):
+class CalculateChecksums(PoE):
 	"""The CalculateChecksums class implements a Bag of Tasks. Since there
 		is no explicit "Bag of Tasks" pattern template, we inherit from the
 		radical.ensemblemd.Pipeline pattern and define just one stage.
 	"""
 
 	def __init__(self, stages, instances):
-		BagofTasks.__init__(self, stages, instances)
+		PoE.__init__(self, stages, instances)
 
 	def stage_1(self, instance):
 		"""This stage downloads a sample UTF-8 file from a remote websever and
@@ -55,24 +59,25 @@ if __name__ == "__main__":
 		resource = sys.argv[1]
 	else: 
 		resource = 'local.localhost'
-	
+
 	try:
 
-		# Create a new static execution context with one resource and a fixed
+		with open('%s/config.json'%os.path.dirname(os.path.abspath(__file__))) as data_file:    
+			config = json.load(data_file)
+
+		# Create a new resource handle with one resource and a fixed
 		# number of cores and runtime.
-		cluster = SingleClusterEnvironment(
+		cluster = ResourceHandle(
 				resource=resource,
-				cores=1,
+				cores=config[resource]["cores"],
 				walltime=15,
 				#username=None,
 
 				project=config[resource]['project'],
 				access_schema = config[resource]['schema'],
 				queue = config[resource]['queue'],
-
-				database_url='mongodb://extasy:extasyproject@extasy-db.epcc.ed.ac.uk/radicalpilot',
-				#database_name='myexps',
-				)
+				database_url='mongodb://rp:rp@ds015335.mlab.com:15335/rp',
+			)
 
 		# Allocate the resources.
 		cluster.allocate()
@@ -89,9 +94,12 @@ if __name__ == "__main__":
 		for result in glob.glob("checksum*.sha1"):
 			print "  * {0}".format(open(result, "r").readline().strip())
 
-		cluster.deallocate()
-
 	except EnsemblemdError, er:
 
 		print "Ensemble MD Toolkit Error: {0}".format(str(er))
 		raise # Just raise the execption again to get the backtrace
+
+	try:
+		cluster.deallocate()
+	except:
+		pass
