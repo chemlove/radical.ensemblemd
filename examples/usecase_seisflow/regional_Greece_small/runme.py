@@ -36,6 +36,29 @@ class Test(PoE):
 
         return k1        
 
+    '''
+    # Simpy sections
+    def branch_2(self):
+
+        # This update module will provide the paths to the data from the forward simulations
+        simpy.update_paths(config, paths)
+
+        simpy.fill_preprocessing_db(config)
+
+    
+    def stage_3(self, instance)
+
+        events = simpy.fetch_new_events(config)
+
+        k1 = Kernel(name="pre_processing")
+        k1.arguments = [] # Based on the events
+        k1.link_input_data = [] # Based on the events
+        k1.cores = 8
+        k1.mpi = True
+
+        return k1
+
+    '''
    
 
 if __name__ == '__main__':
@@ -102,6 +125,14 @@ if __name__ == '__main__':
 
         # Run the given workload
         res.run(app)
+
+        '''
+        # Simpy section
+        import simpy
+        simpy.create_processing_tables(config)
+        simpy.generate_default_paths(config, paths)
+
+        '''
 
     except Exception, ex:
         print 'Application failed, error: ', ex
