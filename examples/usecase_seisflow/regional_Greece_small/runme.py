@@ -9,7 +9,7 @@ from specfem import specfem_kernel
 ENSEMBLE_SIZE=4
 
 
-class Test(PoE):
+class Seisflow(PoE):
 
     def __init__(self, ensemble_size, pipeline_size):
         super(Test,self).__init__(ensemble_size, pipeline_size)
@@ -38,6 +38,8 @@ class Test(PoE):
 
     '''
     # Simpy sections
+
+    # A branch "branch_i" is executed (on the client) after the end of "stage_i"
     def branch_2(self):
 
         # This update module will provide the paths to the data from the forward simulations
@@ -124,9 +126,6 @@ if __name__ == '__main__':
         # Add workload to the application manager
         app.add_workload(pipe)
 
-        # Run the given workload
-        res.run(app)
-
         '''
         # Simpy section
         import simpy
@@ -134,6 +133,11 @@ if __name__ == '__main__':
         simpy.generate_default_paths(config, paths)
 
         '''
+
+        # Run the given workload
+        res.run(app)
+
+        
 
     except Exception, ex:
         print 'Application failed, error: ', ex
