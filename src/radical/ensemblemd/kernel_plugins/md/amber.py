@@ -118,6 +118,14 @@ _KERNEL_INFO = {
                 "pre_exec"    : ["module load amber", "module load python"],
                 "executable"  : ["/opt/amber/bin/sander"],
                 "uses_mpi"    : False
+        },
+        "local.localhost":
+        {
+                "environment" : {},
+                "pre_exec"    : [],
+                "executable"  : ["sander"],
+                "uses_mpi"    : False,
+                "shell"       : "bash"
         }
     }
 }

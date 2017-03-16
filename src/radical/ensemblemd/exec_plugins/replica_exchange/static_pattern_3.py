@@ -6,7 +6,7 @@ before an exchange can take place and all replicas must participate. Exchange
 is performed on compute
 """
 
-__author__    = "Antons Treikalis <antons.treikalis@rutgers.edu>"
+__author__    = "Antons Treikalis <antons.treikalis@gmail.com>"
 __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 

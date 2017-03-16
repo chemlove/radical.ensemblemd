@@ -50,6 +50,14 @@ _KERNEL_INFO = {
             "pre_exec"      : ["source /etc/profile.d/modules.sh", "module load namd"],
             "executable"    : "/lrz/sys/applications/namd/2.9.1/mpi.ibm/NAMD_CVS-2013-11-11_Source/Linux-x86_64-icc/namd2",
             "uses_mpi"      : "True"
+        },
+        "local.localhost":
+        {
+                "environment" : {},
+                "pre_exec"    : [],
+                "executable"  : ["namd2"],
+                "uses_mpi"    : False,
+                "shell"       : "bash"
         }
     }
 }

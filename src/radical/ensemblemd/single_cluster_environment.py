@@ -311,10 +311,12 @@ class SingleClusterEnvironment(ExecutionContext):
 			self._reporter.info('\nStarting pattern execution')
 			plugin.execute_pattern(pattern, self)
 		except KeyboardInterrupt:
+			raise
 			self._exctype,self._excvalue,self._traceback = sys.exc_info()           
 			self.get_logger().error("Fatal error during execution: {0}.".format(str(self._excvalue))) 
 			self._reporter.error("Fatal error during execution: {0}.".format(str(self._excvalue)))
 		except Exception, ex:
+			raise
 			self._exctype,self._excvalue,self._traceback = sys.exc_info()
 			self.get_logger().error("Fatal error during execution: {0}.".format(str(self._excvalue)))
 			self._reporter.error("Fatal error during execution: {0}.".format(str(self._excvalue)))
