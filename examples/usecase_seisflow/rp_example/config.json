@@ -139,7 +139,7 @@
         },
 
         "ornl.titan" : {
-            "project"  : "BIP103",
+            "project"  : "CSC230",
             "queue"    : "debug",
             "schema"   : "local",
             "cores"    : 64
