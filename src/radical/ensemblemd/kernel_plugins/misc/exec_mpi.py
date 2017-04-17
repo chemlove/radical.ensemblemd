@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-"""Executes an MPI program passed as --exec argument. All arguments are assumed
-to be passed together with the name of the program via --exec (can't generalize 
+"""Executes an MPI program passed as --exec1 argument. All arguments are assumed
+to be passed together with the name of the program via --exec1 (can't generalize 
 all MPI programs and their arguments!). In principle works with non-MPI 
 executables, but was designed to run mpi4py python applications.
 
@@ -25,8 +25,8 @@ from radical.ensemblemd.kernel_plugins.kernel_base import KernelBase
 # 
 _KERNEL_INFO = {
     "name":         "misc.exec_mpi",
-    "description":  "simply runs a program passed via --exec",
-    "arguments":   {"--exec=":     
+    "description":  "simply runs a program passed via --exec1",
+    "arguments":   {"--exec1=":     
                         {
                         "mandatory": True,
                         "description": "a program to execute together with all arguments."
@@ -75,9 +75,9 @@ class Kernel(KernelBase):
         cfg = _KERNEL_INFO["machine_configs"][resource_key]
 
         # how is pre_exec passed???
-        self._executable  = self.get_arg("--exec=")
+        self._executable  = self.get_arg("--exec1=")
         # check if we can pass args like that
         self._arguments   = self.get_raw_args()
         self._environment = cfg["environment"]
-        #self._uses_mpi    = cfg["uses_mpi"]
-        #self._pre_exec    = cfg["pre_exec"] 
+        self._uses_mpi    = cfg["uses_mpi"]
+        self._pre_exec    = cfg["pre_exec"] 

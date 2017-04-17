@@ -54,8 +54,7 @@ class Plugin(PluginBase):
         try:
             cycles = pattern.nr_cycles
             
-            do_profile = os.getenv('RADICAL_ENMD_PROFILING', '0')
-
+            self._prof = ru.Profiler("re_static_synchronous")
             self._prof.prof('prepare_shared_data_start')
             pattern.prepare_shared_data()
 
@@ -96,8 +95,8 @@ class Plugin(PluginBase):
                 current_cycle = 1
 
             dim_count = pattern.nr_dims
-            dim_str = []
-            dim_str.append('')
+            dim_str = list()
+
             for i in range(dim_count):
                 s = 'd' + str(i+1)
                 dim_str.append(s)
@@ -116,18 +115,18 @@ class Plugin(PluginBase):
                 exchange_replicas  = list()
  
                 self._prof.prof('get_all_groups_start__' + c_str)
-                all_groups = pattern.get_all_groups(dim_int, replicas)
+                all_groups = pattern.get_all_groups(dim_int)
                 self._prof.prof('get_all_groups_end__' + c_str)
 
                 batch = list()
                 r_cores = pattern.replica_cores
                 for group in all_groups:
                     # assumes uniform distribution of cores
-                    if ( (len(batch)+len(group))*r_cores ) <= self.cores:
+                    if ( (len(batch)+len(group))*r_cores ) <= pattern.cores:
                         batch.append(group)
                     else:
                         # we have more replicas than cores in a single group
-                        if len(batch) == 0 and len(group) > self.cores:
+                        if len(batch) == 0 and len(group) > pattern.cores:
                             batch.append(group)
                         elif len(batch) == 0:
                             self.get_logger().info('ERROR: batch is empty, no replicas to prepare!')
@@ -152,7 +151,7 @@ class Plugin(PluginBase):
                                         i_out = {
                                             'source': item,
                                             'target': 'staging:///%s' % item,
-                                            'action': radical.pilot.COPY
+                                            'action': rp.COPY
                                         }
                                         copy_out.append(i_out)
 
@@ -163,7 +162,7 @@ class Plugin(PluginBase):
                                         i_in = {
                                             'source': 'staging:///%s' % item,
                                             'target': item,
-                                            'action': radical.pilot.COPY
+                                            'action': rp.COPY
                                         }
                                         copy_in.append(i_in)
                                         
@@ -209,7 +208,7 @@ class Plugin(PluginBase):
                         resource._umgr.wait_units(unit_ids=unit_ids)
                         self._prof.prof('wait_md_units_end__' + c_str )
 
-                        if len(group) < self.cores:
+                        if len(group) < pattern.cores:
                             batch = list()
                             batch.append(group)
                         else:
@@ -235,7 +234,7 @@ class Plugin(PluginBase):
                                     i_out = {
                                         'source': item,
                                         'target': 'staging:///%s' % item,
-                                        'action': radical.pilot.COPY
+                                        'action': rp.COPY
                                     }
                                     copy_out.append(i_out)
 
@@ -246,7 +245,7 @@ class Plugin(PluginBase):
                                     i_in = {
                                         'source': 'staging:///%s' % item,
                                         'target': item,
-                                        'action': radical.pilot.COPY
+                                        'action': rp.COPY
                                     }
                                     copy_in.append(i_in)
                                     
@@ -303,7 +302,7 @@ class Plugin(PluginBase):
                     batch = list()
                     r_cores = pattern.dims[dim_str[dim_int]]['replicas']
                     for group in all_groups:
-                        if ( (len(batch)+len(group))*r_cores ) <= self.cores:
+                        if ( (len(batch)+len(group))*r_cores ) <= pattern.cores:
                             batch.append(group)
                         else:
                             if len(batch) == 0:
@@ -329,7 +328,7 @@ class Plugin(PluginBase):
                                             i_out = {
                                                 'source': item,
                                                 'target': 'staging:///%s' % item,
-                                                'action': radical.pilot.COPY
+                                                'action': rp.COPY
                                             }
                                             copy_out.append(i_out)
 
@@ -340,7 +339,7 @@ class Plugin(PluginBase):
                                             i_in = {
                                                 'source': 'staging:///%s' % item,
                                                 'target': item,
-                                                'action': radical.pilot.COPY
+                                                'action': rp.COPY
                                             }
                                             copy_in.append(i_in)
                                             
@@ -402,7 +401,7 @@ class Plugin(PluginBase):
                                         i_out = {
                                             'source': item,
                                             'target': 'staging:///%s' % item,
-                                            'action': radical.pilot.COPY
+                                            'action': rp.COPY
                                         }
                                         copy_out.append(i_out)
 
@@ -413,7 +412,7 @@ class Plugin(PluginBase):
                                         i_in = {
                                             'source': 'staging:///%s' % item,
                                             'target': item,
-                                            'action': radical.pilot.COPY
+                                            'action': rp.COPY
                                         }
                                         copy_in.append(i_in)
                                         
@@ -457,7 +456,7 @@ class Plugin(PluginBase):
                     # submitting unit which determines exchanges between replicas
                   
                     self._prof.prof('prepare_global_ex_calc_start__' + c_str )
-                    gl_kernel = pattern.prepare_global_ex_calc(current_cycle, dim_int, dim_str[dim_int], replicas, self.sd_shared_list)
+                    gl_kernel = pattern.prepare_global_ex_calc(current_cycle, dim_int, dim_str[dim_int], self.sd_shared_list)
                     
                     gl_kernel._bind_to_resource(resource._resource_key)
 
@@ -468,7 +467,7 @@ class Plugin(PluginBase):
                             i_out = {
                                 'source': item,
                                 'target': 'staging:///%s' % item,
-                                'action': radical.pilot.COPY
+                                'action': rp.COPY
                             }
                             copy_out.append(i_out)
 
@@ -479,7 +478,7 @@ class Plugin(PluginBase):
                             i_in = {
                                 'source': 'staging:///%s' % item,
                                 'target': item,
-                                'action': radical.pilot.COPY
+                                'action': rp.COPY
                             }
                             copy_in.append(i_in)
                             
@@ -521,7 +520,7 @@ class Plugin(PluginBase):
                 # no salt concentration exchange
                 else:
                     self._prof.prof('prepare_global_ex_calc_start__' + c_str )
-                    gl_kernel = pattern.prepare_global_ex_calc(current_cycle, dim_int, dim_str[dim_int], replicas, self.sd_shared_list)
+                    gl_kernel = pattern.prepare_global_ex_calc(current_cycle, dim_int, dim_str[dim_int], self.sd_shared_list)
                     
                     gl_kernel._bind_to_resource(resource._resource_key)
 
@@ -532,7 +531,7 @@ class Plugin(PluginBase):
                             i_out = {
                                 'source': item,
                                 'target': 'staging:///%s' % item,
-                                'action': radical.pilot.COPY
+                                'action': rp.COPY
                             }
                             copy_out.append(i_out)
 
@@ -543,7 +542,7 @@ class Plugin(PluginBase):
                             i_in = {
                                 'source': 'staging:///%s' % item,
                                 'target': item,
-                                'action': radical.pilot.COPY
+                                'action': rp.COPY
                             }
                             copy_in.append(i_in)
                             

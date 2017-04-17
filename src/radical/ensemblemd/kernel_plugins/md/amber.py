@@ -94,6 +94,8 @@ _KERNEL_INFO = {
                 "environment" : {},
                 "pre_exec"    : ["module load TACC", "module load amber/12.0"],
                 "executable"  : ["/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/sander"],
+                "executable_mpi" : ["/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/sander.MPI"],
+                "executable_gpu" : ["/opt/apps/intel13/mvapich2_1_9/amber/12.0/bin/pmemd.cuda"],
                 "uses_mpi"    : False
         },
         "epsrc.archer":
@@ -123,7 +125,9 @@ _KERNEL_INFO = {
         {
                 "environment" : {},
                 "pre_exec"    : [],
-                "executable"  : ["sander"],
+                "executable"  : ["/home/antons/amber/amber14-single/bin/sander"],
+                "executable_mpi"  : ["/home/antons/amber/amber14-single/bin/sander.MPI"],
+                "executable_gpu" : [],
                 "uses_mpi"    : False,
                 "shell"       : "bash"
         }
@@ -190,6 +194,8 @@ class Kernel(KernelBase):
                         ]
        
             self._executable  = cfg["executable"]
+            self._executable_mpi  = cfg["executable_mpi"]
+            self._executable_gpu  = cfg["executable_gpu"]
             self._arguments   = arguments
             self._environment = cfg["environment"]
             self._uses_mpi    = False

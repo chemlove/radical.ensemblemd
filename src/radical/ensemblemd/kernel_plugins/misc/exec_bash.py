@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-"""A kernel that compares two ASCII files and outputs the differences in a detailed
-   format.
+"""A kernel that executes up to three executables using bash
 """
 
 __author__    = "Antons Treikalis <antons.treikalis@gmail.com>"
@@ -18,21 +17,21 @@ from radical.ensemblemd.kernel_plugins.kernel_base import KernelBase
 # 
 _KERNEL_INFO = {
     "name":         "misc.exec_bash",
-    "description":  "Counts the differences between two ASCII files.",
+    "description":  "Executes up to three apps using bash",
     "arguments":   {"--exec1=":     
                         {
                         "mandatory": True,
-                        "description": "The first input ASCII file."
+                        "description": "App one"
                         },
                     "--exec2=":     
                         {
                         "mandatory": False,
-                        "description": "The second input ASCII file."
+                        "description": "App two"
                         },
                     "--exec3=":     
                         {
                         "mandatory": False,
-                        "description": "The output file containing the difference count."
+                        "description": "App three"
                         },
                     },
     "machine_configs": 
@@ -40,12 +39,11 @@ _KERNEL_INFO = {
         "*": {
             "environment"   : None,
             "pre_exec"      : None,
-            "executable"    : "diff",
+            "executable"    : "/bin/bash",
             "uses_mpi"      : False
         }
     }
 }
-
 
 # ------------------------------------------------------------------------------
 # 
@@ -78,15 +76,21 @@ class Kernel(KernelBase):
 
         cfg = _KERNEL_INFO["machine_configs"][resource_key]
 
-        executable = "/bin/bash" 
-        arguments  = ['-l', '-c', 'diff -U 0 {input1} {input2} | grep ^@ | wc -l  > {output}'.format(
-            input1 = self.get_arg("--inputfile1="),
-            input2 = self.get_arg("--inputfile2="),
-            output = self.get_arg("--outputfile="))
-        ]
+        exec1 = self.get_arg("--exec1=")
+        exec2 = self.get_arg("--exec2=")
+        exec3 = self.get_arg("--exec3=")
 
-        self._executable  = executable
+        if (exec2 and exec3):
+            arguments  = ['-c', exec1 + "; wait; " + \
+                                exec2 + "; wait; " + \
+                                exec3 ]
+        else:
+            arguments  = ['-c', exec1 + "; wait; " + \
+                                exec2 ]
+        
+        self._executable  = "/bin/bash"
         self._arguments   = arguments
         self._environment = cfg["environment"]
         self._uses_mpi    = cfg["uses_mpi"]
-        self._pre_exec    = None 
+        #self._pre_exec    = None 
+

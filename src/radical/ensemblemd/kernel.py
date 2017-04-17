@@ -145,6 +145,18 @@ class Kernel(object):
     #---------------------------------------------------------------------------
     #
     @property
+    def _cu_def_executable_mpi(self):
+        return self._kernel._executable_mpi
+
+    #---------------------------------------------------------------------------
+    #
+    @property
+    def _cu_def_executable_gpu(self):
+        return self._kernel._executable_gpu
+
+    #---------------------------------------------------------------------------
+    #
+    @property
     def environment(self):
         return self._kernel._environment
 
